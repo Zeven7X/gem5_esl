@@ -577,6 +577,14 @@ for root, dirs, files in os.walk(base_dir, topdown=True):
         SConscript(os.path.join(root, 'SConscript'), variant_dir=build_dir,
                    duplicate=GetOption('duplicate_sources'))
 
+# Custom components live outside src/ to keep local experiments separate from
+# the upstream gem5 source tree while still using the normal SCons pipeline.
+Export('env', 'SimObject', 'Source')
+SConscript('#my_module/SConscript',
+           variant_dir=os.path.join(env['BUILDDIR'], 'my_module'),
+           exports=['env', 'SimObject', 'Source'],
+           duplicate=GetOption('duplicate_sources'))
+
 for extra_dir in extras_dir_list:
     prefix_len = len(os.path.dirname(extra_dir)) + 1
 

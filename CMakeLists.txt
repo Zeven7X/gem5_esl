@@ -32,6 +32,7 @@ add_library(gem5_headers INTERFACE)
 
 target_include_directories(gem5_headers
     INTERFACE
+        "${GEM5_PROJECT_ROOT}/my_module/ide_stubs"
         "${GEM5_IDE_ALIAS_DIR}"
         "${GEM5_PROJECT_ROOT}/src"
         "${GEM5_PROJECT_ROOT}/include"
@@ -61,6 +62,8 @@ file(GLOB_RECURSE GEM5_IDE_TREE_FILES CONFIGURE_DEPENDS
     "${GEM5_PROJECT_ROOT}/src/*.cpp"
     "${GEM5_PROJECT_ROOT}/include/*.hh"
     "${GEM5_PROJECT_ROOT}/include/*.h"
+    "${GEM5_PROJECT_ROOT}/my_module/include/*.hh"
+    "${GEM5_PROJECT_ROOT}/my_module/src/*.cc"
 )
 
 add_custom_target(gem5_source_tree SOURCES ${GEM5_IDE_TREE_FILES})
@@ -83,7 +86,6 @@ endif()
 set(GEM5_USER_SOURCES "")
 if(EXISTS "${GEM5_PROJECT_ROOT}/my_module/src")
     file(GLOB_RECURSE GEM5_MY_MODULE_SOURCES CONFIGURE_DEPENDS
-        "${GEM5_PROJECT_ROOT}/my_module/src/*.cc"
         "${GEM5_PROJECT_ROOT}/my_module/src/*.cpp"
         "${GEM5_PROJECT_ROOT}/my_module/src/*.cxx"
     )

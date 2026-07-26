@@ -1,0 +1,11 @@
+Import('env', 'SimObject', 'Source')
+
+env.Append(CPPPATH=[Dir('#my_module/include')])
+
+SimObject('XBarIngress.py', sim_objects=['XBarIngress'])
+SimObject('QoSRoundRobinArbiter.py', sim_objects=['QoSRoundRobinArbiter'])
+
+Source('src/gem5_xbar/xbar_ingress.cc')
+Source('src/gem5_xbar/qos_rr_arbiter.cc')
+
+DebugFlag('CustomXBar', 'For the custom programmable XBAR components')
