@@ -3,17 +3,30 @@
 `XBarIngress` and `QoSRoundRobinArbiter` are new gem5 `SimObject` building
 blocks. They do not inherit from `BaseXBar`.
 
+The address-interleaved logical/physical bank fabric built on these blocks is
+documented in [BANK_FABRIC_HANDOFF.md](BANK_FABRIC_HANDOFF.md).
+
 ## Components
 
 - `XBarIngress`
   - One `ResponsePort` named `upstream` and one `RequestPort` named
     `downstream`.
   - Enforces `ostd_limit` and adds a per-packet route plan at entry.
+  - Can use `BankAddressMapper` plus `ingress_id` for address-dependent routes.
 - `QoSRoundRobinArbiter`
   - `num_inputs` vector `in_ports` and `num_outputs` vector `out_ports`.
   - Each output arbitrates among matching input heads with highest packet QoS,
     then round-robin. The initial RR winner is local input 0.
   - Keeps independent input, output, and response buffers.
+- `BankAddressMapper`
+  - Selects a logical bank, interleaves onto a physical bank, and looks up a
+    compiled route for the packet's ingress.
+- `PhysicalBank`
+  - Models configurable data width, per-beat service latency, and bounded
+    request/response queues before an existing memory backend.
+- `BankFabric`
+  - Python `SubSystem` that compiles a `BankFabricSpec`, creates all objects,
+    and wires every adjacent port automatically.
 
 ## Route Plan
 

@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "base/logging.hh"
+#include "gem5_xbar/bank_address_mapper.hh"
 #include "gem5_xbar/route_plan.hh"
 
 namespace gem5::customxbar
@@ -16,7 +17,9 @@ XBarIngress::XBarIngress(const XBarIngressParams &p)
       downstreamPort(name() + ".downstream", *this),
       requestEvent([this] { processRequest(); }, name() + ".request_event"),
       responseEvent([this] { processResponse(); }, name() + ".response_event"),
+      mapper(p.mapper),
       defaultRoute(p.route_outputs.begin(), p.route_outputs.end()),
+      ingressId(p.ingress_id),
       ostdLimit(p.ostd_limit),
       bufferDepth(p.buffer_depth),
       forwardLatency(p.forward_latency)
@@ -114,6 +117,7 @@ bool
 XBarIngress::acceptResponse(PacketPtr pkt)
 {
     if (responseQueue.size() >= bufferDepth) {
+        needResponseRetry = true;
         return false;
     }
 
@@ -163,6 +167,11 @@ XBarIngress::processRequest()
     PacketPtr pkt = requestQueue.front();
     if (downstreamPort.sendTimingReq(pkt)) {
         requestQueue.pop_front();
+        if (!pkt->needsResponse()) {
+            panic_if(outstanding == 0,
+                     "XBarIngress %s lost OSTD accounting", name());
+            --outstanding;
+        }
         trySendRetry();
         if (!requestQueue.empty())
             schedule(requestEvent, curTick() + std::max<Tick>(forwardLatency, 1));
@@ -180,6 +189,7 @@ XBarIngress::processResponse()
     PacketPtr pkt = responseQueue.front();
     if (upstreamPort.sendTimingResp(pkt)) {
         responseQueue.pop_front();
+        trySendResponseRetry();
         panic_if(outstanding == 0,
                  "XBarIngress %s received an unmatched response", name());
         --outstanding;
@@ -194,6 +204,14 @@ XBarIngress::processResponse()
 void
 XBarIngress::stampRoutePlan(PacketPtr pkt)
 {
+    if (mapper) {
+        auto mapping = mapper->map(pkt, ingressId);
+        pkt->setExtension(std::make_shared<RoutePlan>(
+            std::move(mapping.routeOutputs), mapping.logicalBank,
+            mapping.physicalBank));
+        return;
+    }
+
     const std::vector<std::uint32_t> route = routeFunction
         ? routeFunction(pkt)
         : defaultRoute;
@@ -213,6 +231,15 @@ XBarIngress::trySendRetry()
         requestQueue.size() < bufferDepth) {
         needRequestRetry = false;
         upstreamPort.sendRetryReq();
+    }
+}
+
+void
+XBarIngress::trySendResponseRetry()
+{
+    if (needResponseRetry && responseQueue.size() < bufferDepth) {
+        needResponseRetry = false;
+        downstreamPort.sendRetryResp();
     }
 }
 

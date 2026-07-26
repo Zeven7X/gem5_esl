@@ -1,45 +1,37 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <deque>
-#include <functional>
 #include <string>
-#include <utility>
-#include <vector>
 
 #include "mem/port.hh"
 #include "sim/eventq.hh"
 #include "sim/sim_object.hh"
 
-#include "params/XBarIngress.hh"
+#include "params/PhysicalBank.hh"
 
 namespace gem5::customxbar
 {
 
-class BankAddressMapper;
-
 /**
- * Request entry point for a custom XBAR fabric. It enforces an OSTD limit,
- * stamps a route plan on each accepted packet, and forwards responses back to
- * its upstream RequestPort.
+ * A bandwidth-aware physical-bank front end. It serializes requests according
+ * to a configurable beat width and forwards them to an existing memory
+ * controller or memory object.
  */
-class XBarIngress : public SimObject
+class PhysicalBank : public SimObject
 {
   public:
-    using RouteFunction = std::function<std::vector<std::uint32_t>(PacketPtr)>;
-
-    explicit XBarIngress(const XBarIngressParams &p);
+    explicit PhysicalBank(const PhysicalBankParams &p);
 
     Port &getPort(const std::string &if_name,
                   PortID idx = InvalidPortID) override;
-
-    void setRouteFunction(RouteFunction function);
 
   private:
     class UpstreamPort : public ResponsePort
     {
       public:
-        UpstreamPort(const std::string &name, XBarIngress &owner)
+        UpstreamPort(const std::string &name, PhysicalBank &owner)
             : ResponsePort(name), owner(owner)
         {
         }
@@ -53,13 +45,13 @@ class XBarIngress : public SimObject
         void recvRespRetry() override;
 
       private:
-        XBarIngress &owner;
+        PhysicalBank &owner;
     };
 
     class DownstreamPort : public RequestPort
     {
       public:
-        DownstreamPort(const std::string &name, XBarIngress &owner)
+        DownstreamPort(const std::string &name, PhysicalBank &owner)
             : RequestPort(name), owner(owner)
         {
         }
@@ -70,21 +62,22 @@ class XBarIngress : public SimObject
         void recvRangeChange() override;
 
       private:
-        XBarIngress &owner;
+        PhysicalBank &owner;
     };
 
     bool acceptRequest(PacketPtr pkt);
     bool acceptResponse(PacketPtr pkt);
     Tick forwardAtomic(PacketPtr pkt);
     void forwardFunctional(PacketPtr pkt);
-    void retryResponse();
     void retryRequest();
+    void retryResponse();
     void processRequest();
     void processResponse();
-    void stampRoutePlan(PacketPtr pkt);
-    void sendRangeChange();
-    void trySendRetry();
+    void scheduleFrontRequest(Tick delay);
+    void trySendRequestRetry();
     void trySendResponseRetry();
+    void validateDestination(PacketPtr pkt) const;
+    Tick serviceLatency(PacketPtr pkt) const;
 
     UpstreamPort upstreamPort;
     DownstreamPort downstreamPort;
@@ -92,14 +85,15 @@ class XBarIngress : public SimObject
     std::deque<PacketPtr> responseQueue;
     EventFunctionWrapper requestEvent;
     EventFunctionWrapper responseEvent;
-    RouteFunction routeFunction;
-    BankAddressMapper *const mapper;
-    std::vector<std::uint32_t> defaultRoute;
-    const std::size_t ingressId;
-    const std::size_t ostdLimit;
-    const std::size_t bufferDepth;
-    const Tick forwardLatency;
-    std::size_t outstanding = 0;
+
+    const std::uint32_t bankId;
+    const std::size_t dataWidthBits;
+    const std::size_t beatBytes;
+    const std::size_t requestBufferDepth;
+    const std::size_t responseBufferDepth;
+    const Tick baseLatency;
+    const Tick perBeatLatency;
+
     bool waitingRequestRetry = false;
     bool waitingResponseRetry = false;
     bool needRequestRetry = false;

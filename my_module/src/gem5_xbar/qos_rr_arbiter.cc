@@ -51,6 +51,8 @@ QoSRoundRobinArbiter::QoSRoundRobinArbiter(
     nextInput.assign(p.num_outputs, 0);
     waitingOutputRetry.assign(p.num_outputs, false);
     waitingResponseRetry.assign(p.num_inputs, false);
+    needOutputResponseRetry.assign(p.num_outputs, false);
+    blockedResponseInput.assign(p.num_outputs, InvalidPortID);
 
     for (PortID output = 0; output < p.num_outputs; ++output) {
         outputPorts.emplace_back(std::make_unique<OutputPort>(
@@ -150,8 +152,11 @@ QoSRoundRobinArbiter::acceptResponse(PortID output, PacketPtr pkt)
              "%s received a response with no return route", name());
 
     const PortID input = route->second;
-    if (responseQueues[input].size() >= responseBufferDepth)
+    if (responseQueues[input].size() >= responseBufferDepth) {
+        needOutputResponseRetry[output] = true;
+        blockedResponseInput[output] = input;
         return false;
+    }
 
     returnRoutes[output].erase(route);
     responseQueues[input].push_back(pkt);
@@ -214,9 +219,12 @@ QoSRoundRobinArbiter::processOutput(PortID output)
         return;
 
     const Transit &transit = outputQueues[output].front();
-    const auto inserted = returnRoutes[output].emplace(
-        transit.pkt, transit.sourceInput);
-    panic_if(!inserted.second, "%s duplicated timing request", name());
+    const bool needs_response = transit.pkt->needsResponse();
+    if (needs_response) {
+        const auto inserted = returnRoutes[output].emplace(
+            transit.pkt, transit.sourceInput);
+        panic_if(!inserted.second, "%s duplicated timing request", name());
+    }
 
     if (outputPorts[output]->sendTimingReq(transit.pkt)) {
         outputQueues[output].pop_front();
@@ -224,7 +232,8 @@ QoSRoundRobinArbiter::processOutput(PortID output)
             scheduleOutput(output, true);
         scheduleArbitration();
     } else {
-        returnRoutes[output].erase(transit.pkt);
+        if (needs_response)
+            returnRoutes[output].erase(transit.pkt);
         waitingOutputRetry[output] = true;
     }
 }
@@ -238,6 +247,7 @@ QoSRoundRobinArbiter::processResponse(PortID input)
     PacketPtr pkt = responseQueues[input].front();
     if (inputPorts[input]->sendTimingResp(pkt)) {
         responseQueues[input].pop_front();
+        trySendOutputResponseRetry(input);
         if (!responseQueues[input].empty())
             scheduleResponse(input);
     } else {
@@ -288,6 +298,26 @@ QoSRoundRobinArbiter::trySendInputRetry(PortID input)
     if (needInputRetry[input] && inputQueues[input].size() < inputBufferDepth) {
         needInputRetry[input] = false;
         inputPorts[input]->sendRetryReq();
+    }
+}
+
+void
+QoSRoundRobinArbiter::trySendOutputResponseRetry(PortID input)
+{
+    if (responseQueues[input].size() >= responseBufferDepth)
+        return;
+
+    std::size_t available =
+        responseBufferDepth - responseQueues[input].size();
+    for (PortID output = 0; output < outputPorts.size(); ++output) {
+        if (needOutputResponseRetry[output] &&
+            blockedResponseInput[output] == input) {
+            needOutputResponseRetry[output] = false;
+            blockedResponseInput[output] = InvalidPortID;
+            outputPorts[output]->sendRetryResp();
+            if (--available == 0)
+                break;
+        }
     }
 }
 

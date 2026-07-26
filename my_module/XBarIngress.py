@@ -12,6 +12,12 @@ class XBarIngress(SimObject):
     ostd_limit = Param.Unsigned(16, "Maximum accepted timing requests")
     buffer_depth = Param.Unsigned(16, "Request and response queue depth")
     forward_latency = Param.Latency("0t", "Ingress forwarding latency")
+    mapper = Param.BankAddressMapper(
+        NULL, "Optional address mapper used to create per-packet routes"
+    )
+    ingress_id = Param.Unsigned(
+        0, "Ingress index used when selecting an address-dependent route"
+    )
     route_outputs = VectorParam.Unsigned(
-        [], "Global output id selected for every arbiter layer"
+        [], "Fallback global output id selected for every arbiter layer"
     )

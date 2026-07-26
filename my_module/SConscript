@@ -1,11 +1,18 @@
-Import('env', 'SimObject', 'Source')
+Import('env', 'PySource', 'SimObject', 'Source')
 
 env.Append(CPPPATH=[Dir('#my_module/include')])
 
 SimObject('XBarIngress.py', sim_objects=['XBarIngress'])
 SimObject('QoSRoundRobinArbiter.py', sim_objects=['QoSRoundRobinArbiter'])
+SimObject('BankAddressMapper.py', sim_objects=['BankAddressMapper'])
+SimObject('PhysicalBank.py', sim_objects=['PhysicalBank'])
+
+PySource('m5.objects', 'BankTopology.py')
+PySource('m5.objects', 'BankFabric.py')
 
 Source('src/gem5_xbar/xbar_ingress.cc')
 Source('src/gem5_xbar/qos_rr_arbiter.cc')
+Source('src/gem5_xbar/bank_address_mapper.cc')
+Source('src/gem5_xbar/physical_bank.cc')
 
 DebugFlag('CustomXBar', 'For the custom programmable XBAR components')

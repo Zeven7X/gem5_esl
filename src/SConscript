@@ -579,10 +579,10 @@ for root, dirs, files in os.walk(base_dir, topdown=True):
 
 # Custom components live outside src/ to keep local experiments separate from
 # the upstream gem5 source tree while still using the normal SCons pipeline.
-Export('env', 'SimObject', 'Source')
+Export('env', 'PySource', 'SimObject', 'Source')
 SConscript('#my_module/SConscript',
            variant_dir=os.path.join(env['BUILDDIR'], 'my_module'),
-           exports=['env', 'SimObject', 'Source'],
+           exports=['env', 'PySource', 'SimObject', 'Source'],
            duplicate=GetOption('duplicate_sources'))
 
 for extra_dir in extras_dir_list:

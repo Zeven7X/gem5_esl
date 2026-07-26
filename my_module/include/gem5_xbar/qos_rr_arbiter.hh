@@ -93,6 +93,7 @@ class QoSRoundRobinArbiter : public SimObject
     void scheduleOutput(PortID output, bool defer_to_next_tick = false);
     void scheduleResponse(PortID input);
     void trySendInputRetry(PortID input);
+    void trySendOutputResponseRetry(PortID input);
     void sendRangeChange();
 
     PortID localOutputFor(PacketPtr pkt) const;
@@ -112,6 +113,8 @@ class QoSRoundRobinArbiter : public SimObject
     std::vector<bool> waitingOutputRetry;
     std::vector<bool> waitingResponseRetry;
     std::vector<bool> needInputRetry;
+    std::vector<bool> needOutputResponseRetry;
+    std::vector<PortID> blockedResponseInput;
     EventFunctionWrapper arbitrationEvent;
 
     const std::size_t layerId;
