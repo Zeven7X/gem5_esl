@@ -14,7 +14,9 @@
 
 #include "wiep/mp_sync/common.hh"
 
-namespace wiep::mp
+namespace wiep
+{
+namespace mp
 {
 
 namespace
@@ -127,4 +129,5 @@ NamedSemaphore::wait()
     }
 }
 
-} // namespace wiep::mp
+} // namespace mp
+} // namespace wiep

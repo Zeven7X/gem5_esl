@@ -2,7 +2,7 @@
 
 This directory contains a Linux/GCC-oriented, process-level synchronization
 framework. It is independent of gem5's `BaseXBar` and does not modify the
-existing WIEP headers.
+existing WIEP headers. The implementation targets C++14 and GCC 13.1 or older.
 
 ## Timing model
 

@@ -2,7 +2,9 @@
 
 #include <cstring>
 
-namespace wiep::mp
+namespace wiep
+{
+namespace mp
 {
 
 MpSyncManager::MpSyncManager(const std::string &session, MpRole role,
@@ -174,4 +176,5 @@ MpSyncManager::checkRole(MpRole expected, const char *operation) const
         throw MpError(std::string(operation) + " called by the wrong role");
 }
 
-} // namespace wiep::mp
+} // namespace mp
+} // namespace wiep

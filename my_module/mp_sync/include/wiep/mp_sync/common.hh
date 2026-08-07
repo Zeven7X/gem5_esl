@@ -5,13 +5,15 @@
 #include <stdexcept>
 #include <string>
 
-namespace wiep::mp
+namespace wiep
+{
+namespace mp
 {
 
-inline constexpr std::uint32_t ProtocolVersion = 1;
-inline constexpr std::uint32_t ChannelMagic = 0x57465043;
-inline constexpr std::uint32_t ControlMagic = 0x57465053;
-inline constexpr std::size_t MaxWorkers = 64;
+constexpr std::uint32_t ProtocolVersion = 1;
+constexpr std::uint32_t ChannelMagic = 0x57465043;
+constexpr std::uint32_t ControlMagic = 0x57465053;
+constexpr std::size_t MaxWorkers = 64;
 
 enum class MpRole : std::uint32_t
 {
@@ -68,4 +70,5 @@ class IMpSyncChannel
     virtual std::uint32_t workerId() const = 0;
 };
 
-} // namespace wiep::mp
+} // namespace mp
+} // namespace wiep

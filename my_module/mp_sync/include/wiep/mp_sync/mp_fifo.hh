@@ -12,7 +12,9 @@
 #include "wiep/mp_sync/common.hh"
 #include "wiep/mp_sync/posix_ipc.hh"
 
-namespace wiep::mp
+namespace wiep
+{
+namespace mp
 {
 
 template <typename T, std::size_t DEPTH, std::size_t MAX_BURST = DEPTH>
@@ -42,7 +44,7 @@ class MpFifo : public IMpSyncChannel
         std::uint64_t sync_id;
         std::uint32_t count;
         std::uint32_t reserved;
-        alignas(T) std::array<std::byte, sizeof(T) * MAX_BURST> payload;
+        alignas(T) std::array<unsigned char, sizeof(T) * MAX_BURST> payload;
     };
 
     struct alignas(64) CreditSlot
@@ -260,4 +262,5 @@ class MpFifo : public IMpSyncChannel
     std::size_t remoteOccupancy_ = 0;
 };
 
-} // namespace wiep::mp
+} // namespace mp
+} // namespace wiep

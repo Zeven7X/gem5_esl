@@ -5,7 +5,9 @@
 #include <semaphore.h>
 #include <string>
 
-namespace wiep::mp
+namespace wiep
+{
+namespace mp
 {
 
 std::string makeIpcName(const std::string &session,
@@ -52,4 +54,5 @@ class NamedSemaphore
     bool owner_ = false;
 };
 
-} // namespace wiep::mp
+} // namespace mp
+} // namespace wiep

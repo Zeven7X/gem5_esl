@@ -8,7 +8,9 @@
 #include "wiep/mp_sync/common.hh"
 #include "wiep/mp_sync/posix_ipc.hh"
 
-namespace wiep::mp
+namespace wiep
+{
+namespace mp
 {
 
 class MpSyncManager
@@ -69,4 +71,5 @@ class MpSyncManager
     bool stopped_ = false;
 };
 
-} // namespace wiep::mp
+} // namespace mp
+} // namespace wiep
