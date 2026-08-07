@@ -69,76 +69,150 @@ makeSharedChannelConfig(const WiepAxiMpConfig &config, AxiChannel channel)
     return channelConfig;
 }
 
-// Codec is supplied by the model because PacketPtr is process-local.
-// Required interface:
+// PacketPtr stays local. nbWrite encodes it directly into shared memory, while
+// nbGet/nbRead reconstruct a process-local PacketPtr through Codec.
+//
+// Required Codec interface:
 //   bool encode(PacketPtr, AxiChannel, WirePacket &);
 //   PacketPtr decode(const WirePacket &, AxiChannel);
 template <typename WirePacket, typename Codec, std::uint32_t Capacity = 256>
-class WiepAxiMpTransport
+class WiepAxiSharedFifo
 {
     static_assert(std::is_trivially_copyable<WirePacket>::value,
                   "WirePacket must be trivially copyable");
     static_assert(!std::is_pointer<WirePacket>::value,
                   "WirePacket cannot be a process-local pointer");
 
-  protected:
     typedef AxiMpEnvelope<WirePacket> Envelope;
     typedef WiepSharedChannel<Envelope, Capacity> Channel;
 
-    WiepAxiMpTransport(const WiepAxiMpConfig &config, Codec &codec)
-        : config_(config), codec_(codec), currentEpoch_(0),
-          awChannel_(makeSharedChannelConfig(config, AxiChannel::AW)),
-          wChannel_(makeSharedChannelConfig(config, AxiChannel::W)),
-          bChannel_(makeSharedChannelConfig(config, AxiChannel::B)),
-          arChannel_(makeSharedChannelConfig(config, AxiChannel::AR)),
-          rChannel_(makeSharedChannelConfig(config, AxiChannel::R))
+  public:
+    WiepAxiSharedFifo(const WiepAxiMpConfig &config, AxiChannel axiChannel,
+                      Codec &codec)
+        : axiChannel_(axiChannel), codec_(codec),
+          channel_(makeSharedChannelConfig(config, axiChannel)),
+          currentEpoch_(0), cachedPacket_(NULL), cachedPacketValid_(false),
+          writeBlocked_(false)
     {
     }
 
-    bool initializeTransport()
-    {
-        return awChannel_.initialize() && wChannel_.initialize() &&
-               bChannel_.initialize() && arChannel_.initialize() &&
-               rChannel_.initialize();
-    }
+    bool initialize() { return channel_.initialize(); }
 
-    void setCurrentEpoch(std::uint64_t epoch) { currentEpoch_ = epoch; }
-
-    bool sendPacket(PacketPtr packet, AxiChannel axiChannel, Channel &channel)
+    bool nbWrite(PacketPtr packet)
     {
         Envelope envelope = Envelope();
-        if (!codec_.encode(packet, axiChannel, envelope.packet))
+        if (!codec_.encode(packet, axiChannel_, envelope.packet))
             return false;
 
-        // Data produced in epoch N becomes visible after barrier N -> N+1.
+        // A command generated in epoch N is readable after barrier N -> N+1.
         envelope.visibleEpoch = currentEpoch_ + 1U;
-        return channel.nbWrite(envelope);
+        if (channel_.nbWrite(envelope))
+            return true;
+
+        writeBlocked_ = true;
+        return false;
     }
 
-    template <typename Fifo>
-    bool receivePacket(AxiChannel axiChannel, Channel &channel, Fifo *fifo)
+    PacketPtr nbRead()
     {
+        if (!ensureCached())
+            return NULL;
+
+        PacketPtr packet = cachedPacket_;
+        delTrf();
+        return packet;
+    }
+
+    bool nbRead(PacketPtr &packet)
+    {
+        if (!ensureCached())
+            return false;
+
+        packet = cachedPacket_;
+        return delTrf();
+    }
+
+    PacketPtr &nbGet()
+    {
+        if (!ensureCached())
+            return nullPacket();
+        return cachedPacket_;
+    }
+
+    bool nbGet(PacketPtr &packet)
+    {
+        if (!ensureCached())
+            return false;
+        packet = cachedPacket_;
+        return true;
+    }
+
+    bool delTrf()
+    {
+        if (!ensureCached() || !channel_.delTrf())
+            return false;
+
+        cachedPacket_ = NULL;
+        cachedPacketValid_ = false;
+        return true;
+    }
+
+    bool canPop() { return ensureCached(); }
+    bool checkTrf() { return canPop(); }
+    bool empty() { return !canPop(); }
+    bool full() const { return channel_.full(); }
+
+    // rxSize may include future-epoch entries. Use canPop() for readability.
+    std::uint32_t size() const { return channel_.rxSize(); }
+    std::uint32_t emptyNum() const { return channel_.txFreeSize(); }
+    std::uint32_t capacity() const { return channel_.usableCapacity(); }
+
+    void setCurrentEpoch(std::uint64_t epoch)
+    {
+        currentEpoch_ = epoch;
+    }
+
+    bool consumeWriteRetry()
+    {
+        if (!writeBlocked_ || channel_.full())
+            return false;
+        writeBlocked_ = false;
+        return true;
+    }
+
+    AxiChannel axiChannel() const { return axiChannel_; }
+    std::uint32_t channelId() const { return channel_.channelId(); }
+
+  private:
+    bool ensureCached()
+    {
+        if (cachedPacketValid_)
+            return true;
+
         Envelope envelope;
-        if (fifo->full() || !channel.nbGet(envelope) ||
+        if (!channel_.nbGet(envelope) ||
             envelope.visibleEpoch > currentEpoch_) {
             return false;
         }
 
-        PacketPtr packet = codec_.decode(envelope.packet, axiChannel);
-        if (packet == NULL || !fifo->nbWrite(packet))
-            return false;
-
-        return channel.delTrf();
+        cachedPacket_ = codec_.decode(envelope.packet, axiChannel_);
+        cachedPacketValid_ = cachedPacket_ != NULL;
+        return cachedPacketValid_;
     }
 
-    const WiepAxiMpConfig config_;
+    static PacketPtr &nullPacket()
+    {
+        static PacketPtr packet = NULL;
+        return packet;
+    }
+
+    const AxiChannel axiChannel_;
     Codec &codec_;
+    Channel channel_;
     std::uint64_t currentEpoch_;
-    Channel awChannel_;
-    Channel wChannel_;
-    Channel bChannel_;
-    Channel arChannel_;
-    Channel rChannel_;
+    PacketPtr cachedPacket_;
+    bool cachedPacketValid_;
+    bool writeBlocked_;
 };
 
 } // namespace WiepMp
