@@ -7,5 +7,6 @@ SimObject('QoSRoundRobinArbiter.py', sim_objects=['QoSRoundRobinArbiter'])
 
 Source('src/gem5_xbar/xbar_ingress.cc')
 Source('src/gem5_xbar/qos_rr_arbiter.cc')
+Source('src/WiepPlatformRegistry.cpp')
 
 DebugFlag('CustomXBar', 'For the custom programmable XBAR components')
