@@ -125,6 +125,7 @@ export function createDefaultView(architecture) {
     source: { root: architecture.rootId, fingerprint: "" },
     viewport: { x: 0, y: 0, zoom: 1 },
     nodes: {},
+    ports: {},
     connections: {},
   };
 
@@ -135,11 +136,26 @@ export function createDefaultView(architecture) {
       width: node.kind === "simobj" ? 240 : 600,
       height: node.kind === "simobj" ? 150 : 420,
       label: node.name,
+      type_label: node.className,
+      variable_label: node.id,
       shape: node.kind === "simobj" ? "rounded" : "rect",
       fill: defaultNodeColor(node.kind),
       border: defaultNodeBorder(node.kind),
       collapsed: false,
     };
+    const portsByDirection = {
+      slv: node.ports.filter((port) => port.direction === "slv"),
+      mst: node.ports.filter((port) => port.direction === "mst"),
+    };
+    for (const direction of ["slv", "mst"]) {
+      portsByDirection[direction].forEach((port, index) => {
+        view.ports[port.id] = {
+          label: port.name,
+          side: direction === "slv" ? "left" : "right",
+          offset: (index + 1) / (portsByDirection[direction].length + 1),
+        };
+      });
+    }
   }
 
   for (const connection of architecture.connections) {
@@ -235,6 +251,11 @@ export function mergeView(defaultView, savedView) {
   for (const [id, style] of Object.entries(savedView.nodes ?? {})) {
     if (merged.nodes[id]) {
       merged.nodes[id] = { ...merged.nodes[id], ...style };
+    }
+  }
+  for (const [id, style] of Object.entries(savedView.ports ?? {})) {
+    if (merged.ports[id]) {
+      merged.ports[id] = { ...merged.ports[id], ...style };
     }
   }
   for (const [id, style] of Object.entries(savedView.connections ?? {})) {

@@ -165,8 +165,10 @@ function renderTree() {
 
 function appendTreeNode(parentElement, nodeId, depth, query) {
   const node = state.architecture.nodeById.get(nodeId);
+  const style = state.view.nodes[nodeId];
   const childIds = state.architecture.childrenByParent.get(nodeId) ?? [];
-  const matches = !query || node.name.toLowerCase().includes(query) || node.id.toLowerCase().includes(query);
+  const matches = !query || [style.label, style.type_label, style.variable_label, node.id]
+    .some((value) => String(value).toLowerCase().includes(query));
   const childMatches = childIds.some((id) => subtreeMatches(id, query));
   if (!matches && !childMatches) {
     return;
@@ -179,7 +181,7 @@ function appendTreeNode(parentElement, nodeId, depth, query) {
   row.innerHTML = `
     <span class="tree-caret">${childIds.length ? "▾" : ""}</span>
     <i class="tree-kind ${node.kind}"></i>
-    <span class="tree-label">${escapeHtml(node.name)}</span>
+    <span class="tree-label">${escapeHtml(style.label)}</span>
   `;
   row.addEventListener("click", () => state.editor.focusNode(nodeId));
   parentElement.append(row);
@@ -192,7 +194,9 @@ function appendTreeNode(parentElement, nodeId, depth, query) {
 function subtreeMatches(nodeId, query) {
   if (!query) return true;
   const node = state.architecture.nodeById.get(nodeId);
-  if (node.name.toLowerCase().includes(query) || node.id.toLowerCase().includes(query)) {
+  const style = state.view.nodes[nodeId];
+  if ([style.label, style.type_label, style.variable_label, node.id]
+    .some((value) => String(value).toLowerCase().includes(query))) {
     return true;
   }
   return (state.architecture.childrenByParent.get(nodeId) ?? []).some((id) => subtreeMatches(id, query));
@@ -222,11 +226,13 @@ function renderNodeInspector(nodeId) {
   elements.inspector.innerHTML = `
     <div class="selection-summary">
       <strong>${escapeHtml(style.label)}</strong>
-      <span>${escapeHtml(node.id)}</span>
-      <span>${escapeHtml(node.className)} · ${node.kind}</span>
+      <span data-summary-variable>${escapeHtml(style.variable_label ?? node.id)}</span>
+      <span><i data-summary-type>${escapeHtml(style.type_label ?? node.className)}</i> · ${node.kind}</span>
     </div>
     <div class="field-group">
       <h3>Appearance</h3>
+      ${textField("type_label", "类型名称", style.type_label ?? node.className)}
+      ${textField("variable_label", "变量名称", style.variable_label ?? node.id)}
       ${textField("label", "显示名称", style.label)}
       <div class="form-field">
         <label>形状</label>
@@ -262,7 +268,12 @@ function renderNodeInspector(nodeId) {
         ${node.ports.map((port) => `
           <div class="port-item">
             <i class="${port.direction}"></i>
-            <span>${escapeHtml(port.name)}</span>
+            <input
+              class="port-name-input"
+              data-port-label="${escapeAttribute(port.id)}"
+              value="${escapeAttribute(state.view.ports[port.id]?.label ?? port.name)}"
+              title="${escapeAttribute(port.id)}"
+            />
             <b>${port.direction}</b>
           </div>`).join("") || "<span class='node-class'>No ports</span>"}
       </div>
@@ -284,9 +295,20 @@ function renderNodeInspector(nodeId) {
       syncColorInputs(input, elements.inspector);
       if (field === "label") {
         elements.inspector.querySelector(".selection-summary strong").textContent = style.label;
+      } else if (field === "type_label") {
+        elements.inspector.querySelector("[data-summary-type]").textContent = style.type_label;
+      } else if (field === "variable_label") {
+        elements.inspector.querySelector("[data-summary-variable]").textContent = style.variable_label;
       }
       state.editor.render();
       renderTree();
+      scheduleSave();
+    });
+  });
+  elements.inspector.querySelectorAll("[data-port-label]").forEach((input) => {
+    input.addEventListener("input", () => {
+      state.view.ports[input.dataset.portLabel].label = input.value;
+      state.editor.render();
       scheduleSave();
     });
   });

@@ -447,8 +447,18 @@ button.danger-ghost {
 .port-dot {
   stroke: #fffdf7;
   stroke-width: 2;
-  cursor: crosshair;
+  cursor: grab;
 }
+
+.port-dot:active { cursor: grabbing; }
+
+.port-drag-handle {
+  fill: transparent;
+  cursor: grab;
+  pointer-events: all;
+}
+
+.port-drag-handle:active { cursor: grabbing; }
 
 .port-dot.mst { fill: #d66035; }
 .port-dot.slv { fill: #337e75; }
@@ -671,6 +681,26 @@ button.danger-ghost {
 
 .port-item i.mst { background: #d66035; }
 .port-item i.slv { background: #337e75; }
+
+.port-name-input {
+  min-width: 0;
+  width: 100%;
+  padding: 4px 5px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #33483d;
+  background: transparent;
+  font: inherit;
+}
+
+.port-name-input:hover,
+.port-name-input:focus {
+  border-color: #a9b8ae;
+  outline: none;
+  background: #fffdf7;
+}
+
+[data-summary-type] { font-style: normal; }
 
 .statusbar {
   display: flex;
