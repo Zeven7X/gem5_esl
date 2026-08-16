@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17231d" />
+    <title>WiepView Chip Architecture</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">WV</span>
+          <div>
+            <h1>WiepView</h1>
+            <p>Chip Architecture Workbench</p>
+          </div>
+        </div>
+        <div class="toolbar" aria-label="文件和画布操作">
+          <button id="open-yaml" class="primary">导入 YAML</button>
+          <button id="load-example">载入示例</button>
+          <span class="tool-separator"></span>
+          <button id="auto-layout">自动排版</button>
+          <button id="fit-view">适应画布</button>
+          <span class="tool-separator"></span>
+          <button id="import-view">导入布局</button>
+          <button id="export-view">导出布局</button>
+          <button id="reset-view" class="danger-ghost">重置</button>
+        </div>
+        <input id="yaml-file" type="file" accept=".yaml,.yml,text/yaml" hidden />
+        <input id="view-file" type="file" accept=".yaml,.yml,text/yaml" hidden />
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar hierarchy-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Hierarchy</span>
+              <h2>芯片层次</h2>
+            </div>
+            <span id="node-count" class="count-badge">0</span>
+          </div>
+          <label class="search-box">
+            <span>⌕</span>
+            <input id="tree-search" type="search" placeholder="搜索模块或 dotted" />
+          </label>
+          <div id="hierarchy-tree" class="hierarchy-tree"></div>
+          <div class="legend">
+            <div><i class="legend-dot root"></i>Root</div>
+            <div><i class="legend-dot cluster"></i>Cluster</div>
+            <div><i class="legend-dot object"></i>Object</div>
+            <div><i class="legend-port master"></i>Master</div>
+            <div><i class="legend-port slave"></i>Slave</div>
+          </div>
+        </aside>
+
+        <section class="canvas-panel">
+          <div class="canvas-meta">
+            <div>
+              <span id="document-name">simple_chip.yaml</span>
+              <small id="document-id">等待载入</small>
+            </div>
+            <div class="canvas-hints">
+              <span>拖动模块</span>
+              <span>拖动右下角缩放</span>
+              <span>滚轮缩放画布</span>
+              <span>双击 Cluster 折叠</span>
+            </div>
+          </div>
+          <div id="graph-host" class="graph-host" tabindex="0" aria-label="芯片架构画布"></div>
+          <div class="zoom-controls">
+            <button id="zoom-out" aria-label="缩小">−</button>
+            <span id="zoom-value">100%</span>
+            <button id="zoom-in" aria-label="放大">＋</button>
+          </div>
+        </section>
+
+        <aside class="sidebar inspector-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Inspector</span>
+              <h2>属性调整</h2>
+            </div>
+          </div>
+          <div id="inspector" class="inspector empty-state">
+            <div class="empty-icon">◇</div>
+            <strong>选择一个模块或连线</strong>
+            <p>在画布中单击对象，即可调整尺寸、颜色、形状与线条样式。</p>
+          </div>
+        </aside>
+      </main>
+
+      <footer class="statusbar">
+        <span id="status-indicator" class="status-indicator ready"></span>
+        <span id="status-text">准备就绪</span>
+        <span class="status-spacer"></span>
+        <span id="connection-count">0 connections</span>
+        <span id="save-status">布局自动保存</span>
+      </footer>
+    </div>
+
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+
+    <script src="./vendor/js-yaml.min.js"></script>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

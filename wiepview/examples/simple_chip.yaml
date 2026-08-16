@@ -1,0 +1,79 @@
+# A small WiepView example with root, cluster, objects, ports and connections.
+version: '1.0'
+
+root:
+  name: 'Hardware'
+  dotted: 'HARDWARE'
+  kind: root
+
+nodes:
+  - dotted: 'HARDWARE'
+    name: 'Hardware'
+    kind: root
+    class: 'Hardware'
+    parent: null
+    ports: []
+
+  - dotted: 'HARDWARE.CPU_CLUSTER'
+    name: 'CPU Cluster'
+    kind: cluster
+    class: 'CpuCluster'
+    parent: 'HARDWARE'
+    ports:
+      - { name: 'HARDWARE.CPU_CLUSTER.m_axi', dir: mst }
+
+  - dotted: 'HARDWARE.CPU_CLUSTER.core0'
+    name: 'Core 0'
+    kind: simobj
+    class: 'CpuCore'
+    parent: 'HARDWARE.CPU_CLUSTER'
+    ports:
+      - { name: 'HARDWARE.CPU_CLUSTER.core0.m_axi', dir: mst }
+
+  - dotted: 'HARDWARE.CPU_CLUSTER.core1'
+    name: 'Core 1'
+    kind: simobj
+    class: 'CpuCore'
+    parent: 'HARDWARE.CPU_CLUSTER'
+    ports:
+      - { name: 'HARDWARE.CPU_CLUSTER.core1.m_axi', dir: mst }
+
+  - dotted: 'HARDWARE.CPU_CLUSTER.local_xbar'
+    name: 'Local XBAR'
+    kind: simobj
+    class: 'WiepXBar'
+    parent: 'HARDWARE.CPU_CLUSTER'
+    ports:
+      - { name: 'HARDWARE.CPU_CLUSTER.local_xbar.s_axi_0', dir: slv }
+      - { name: 'HARDWARE.CPU_CLUSTER.local_xbar.s_axi_1', dir: slv }
+      - { name: 'HARDWARE.CPU_CLUSTER.local_xbar.m_axi', dir: mst }
+
+  - dotted: 'HARDWARE.system_xbar'
+    name: 'System XBAR'
+    kind: simobj
+    class: 'WiepXBar'
+    parent: 'HARDWARE'
+    ports:
+      - { name: 'HARDWARE.system_xbar.s_axi', dir: slv }
+      - { name: 'HARDWARE.system_xbar.m_axi', dir: mst }
+
+  - dotted: 'HARDWARE.sram'
+    name: 'SRAM 1 MiB'
+    kind: simobj
+    class: 'SramModel'
+    parent: 'HARDWARE'
+    ports:
+      - { name: 'HARDWARE.sram.s_axi', dir: slv }
+
+connections:
+  - from: 'HARDWARE.CPU_CLUSTER.core0.m_axi'
+    to: 'HARDWARE.CPU_CLUSTER.local_xbar.s_axi_0'
+  - from: 'HARDWARE.CPU_CLUSTER.core1.m_axi'
+    to: 'HARDWARE.CPU_CLUSTER.local_xbar.s_axi_1'
+  - from: 'HARDWARE.CPU_CLUSTER.local_xbar.m_axi'
+    to: 'HARDWARE.system_xbar.s_axi'
+  - from: 'HARDWARE.system_xbar.m_axi'
+    to: 'HARDWARE.sram.s_axi'
+
+node_count: 7
+connection_count: 4
