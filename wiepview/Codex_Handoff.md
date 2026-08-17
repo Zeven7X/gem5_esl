@@ -23,6 +23,7 @@ GitHub：https://github.com/Zeven7X/gem5_esl
 可视化工程对应提交：
 
 ```text
+c5812cc Improve WiepView port and cluster interactions
 96d505f Add WiepView chip architecture visualizer
 6e81687 Refine chip visualization architecture document
 f2b2474 Add platform topology registry and YAML export
@@ -123,6 +124,7 @@ my_module/WiepChipVisualization.md
 ```text
 wiepview/
 ├── README.md
+├── INTERACTION_MODEL.md
 ├── index.html
 ├── styles.css
 ├── serve.sh
@@ -154,10 +156,17 @@ wiepview/
 - 按 `parent` 恢复层次树。
 - Node 拖动；拖动 Cluster 时同步移动全部后代。
 - 拖动右下角控制点改变 Node 大小。
-- 修改显示名、填充色、边框色、位置、尺寸和形状。
+- 分别修改 Node 的显示名称、类型名称和变量名称，不改变真实 ID。
+- 修改填充色、边框色、位置、尺寸和形状。
 - 形状包括直角矩形、圆角矩形、胶囊形和菱形。
+- 修改 Port 显示名，不改变 Connection 使用的真实 Port ID。
+- 将 Port 拖动并吸附到 Node 的左、右、上、下四条边。
+- Port 位置使用 `side + offset` 保存，Node 缩放后仍保持相对位置。
 - 修改 Connection 的颜色、粗细、实线/虚线/点线。
-- Cluster 展开和折叠；折叠后隐藏内部 Node，并把跨 Cluster 连线聚合到 Cluster。
+- Cluster 展开和折叠；折叠后隐藏内部 Node 与内部 Connection。
+- 跨 Cluster 边界的 Connection 代理到 Cluster 的同方向可见 Port。
+- 代理优先使用同局部名 Port，其次使用唯一同方向 Port，无法可靠推导时使用
+  对应方向的边缘中点。
 - 层次树搜索和 Node 定位。
 - 层次化自动布局、画布平移、滚轮缩放和适应画布。
 - IndexedDB 自动保存布局；失败时回退到 `localStorage`。
@@ -173,7 +182,7 @@ chip_arch.yaml
 负责 Node、Cluster、Port、Connection 等仿真架构事实
 
 chip_arch.wiepview.yaml
-负责坐标、尺寸、颜色、形状、线宽、折叠状态和 viewport
+负责显示别名、坐标、尺寸、颜色、形状、Port 布局、线宽、折叠状态和 viewport
 ```
 
 这样 C++ 重新 dump 架构时，不会直接覆盖用户调整的布局。
@@ -231,7 +240,10 @@ sh wiepview/serve.sh 9000
 - YAML 识别到 7 个 Node 和 4 条 Connection。
 - 控制台无 error/warning。
 - Node 改名和形状修改在刷新后成功恢复。
-- Cluster 折叠后可见节点从 7 个变为 4 个。
+- Node 类型、变量和 Port 显示名在刷新后成功恢复。
+- Port 可以拖动到四条边，Connection 端点同步更新。
+- Cluster 折叠后可见节点从 7 个变为 4 个，可见 Connection 从 4 条变为 2 条。
+- 折叠后内部 Connection 不渲染，跨边界 Connection 代理到 Cluster 可见 Port。
 - 自动布局形成 `Core -> Local XBAR -> System XBAR -> SRAM` 的左到右数据流。
 
 ## 12. 当前 Git 工作区注意事项
